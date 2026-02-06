@@ -14,7 +14,7 @@ TARGET_CURRENCIES = os.getenv(
 ).split(",")
 
 # Frankfurter API (free, no key required)
-API_BASE_URL = "https://api.frankfurter.dev"
+API_BASE_URL = "https://api.frankfurter.dev/v1"
 
 # Data storage directory
 DATA_DIR = os.getenv("DATA_DIR", "data")

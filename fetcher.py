@@ -20,8 +20,8 @@ def fetch_latest_rates() -> dict:
         requests.RequestException: On network or API errors.
     """
     params = {
-        "from": config.BASE_CURRENCY,
-        "to": ",".join(config.TARGET_CURRENCIES),
+        "base": config.BASE_CURRENCY,
+        "symbols": ",".join(config.TARGET_CURRENCIES),
     }
     url = f"{config.API_BASE_URL}/latest"
     logger.info("Fetching latest rates from %s", url)
@@ -52,8 +52,8 @@ def fetch_historical_rates(target_date: str) -> dict:
         requests.RequestException: On network or API errors.
     """
     params = {
-        "from": config.BASE_CURRENCY,
-        "to": ",".join(config.TARGET_CURRENCIES),
+        "base": config.BASE_CURRENCY,
+        "symbols": ",".join(config.TARGET_CURRENCIES),
     }
     url = f"{config.API_BASE_URL}/{target_date}"
     logger.info("Fetching historical rates for %s", target_date)
