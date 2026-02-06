@@ -1,13 +1,13 @@
 # Automated Currency Rate Daily Retrieval
 
-Fetches daily currency exchange rates from the [Frankfurter API](https://frankfurter.dev/) and stores them in CSV and JSON formats.
+Fetches daily currency exchange rates from the [Frankfurter API](https://frankfurter.dev/) and stores them in Excel and JSON formats.
 
 ## Features
 
 - **Daily automation** via GitHub Actions (runs at 09:00 UTC)
 - **Local scheduling** for self-hosted continuous retrieval
 - **Historical rate lookup** for any past date
-- **Dual storage** — CSV for spreadsheets, JSON Lines for programmatic access, plus per-day snapshots
+- **Dual storage** — Excel for spreadsheets, JSON Lines for programmatic access, plus per-day snapshots
 - **Configurable** base currency and target currencies via environment variables
 
 ## Quick Start
@@ -47,5 +47,5 @@ Override currencies via GitHub repository variables (`BASE_CURRENCY`, `TARGET_CU
 | File | Format | Description |
 |---|---|---|
 | `data/rates.jsonl` | JSON Lines | Append-only log of all fetched rates |
-| `data/rates.csv` | CSV | Tabular rate history |
+| `data/rates.xlsx` | Excel | Tabular rate history |
 | `data/rates_YYYY-MM-DD.json` | JSON | Per-day snapshot |

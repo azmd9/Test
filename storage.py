@@ -1,10 +1,11 @@
-"""Store and retrieve currency rate data as CSV and JSON."""
+"""Store and retrieve currency rate data as Excel and JSON."""
 
-import csv
 import json
 import logging
 import os
 from pathlib import Path
+
+from openpyxl import Workbook, load_workbook
 
 import config
 
@@ -35,8 +36,8 @@ def save_rates_json(rate_data: dict) -> str:
     return filepath
 
 
-def save_rates_csv(rate_data: dict) -> str:
-    """Append rate data as a row in a CSV file.
+def save_rates_excel(rate_data: dict) -> str:
+    """Append rate data as a row in an Excel file.
 
     Args:
         rate_data: Dict with date, base, and rates.
@@ -45,20 +46,25 @@ def save_rates_csv(rate_data: dict) -> str:
         Path to the written file.
     """
     _ensure_data_dir()
-    filepath = os.path.join(config.DATA_DIR, "rates.csv")
+    filepath = os.path.join(config.DATA_DIR, "rates.xlsx")
     currencies = sorted(rate_data["rates"].keys())
-    file_exists = os.path.exists(filepath)
 
-    with open(filepath, "a", newline="") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(["date", "base"] + currencies)
-        writer.writerow(
-            [rate_data["date"], rate_data["base"]]
-            + [rate_data["rates"].get(c, "") for c in currencies]
-        )
+    if os.path.exists(filepath):
+        wb = load_workbook(filepath)
+        ws = wb.active
+    else:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Currency Rates"
+        ws.append(["date", "base"] + currencies)
 
-    logger.info("Saved CSV rates to %s", filepath)
+    ws.append(
+        [rate_data["date"], rate_data["base"]]
+        + [rate_data["rates"].get(c, "") for c in currencies]
+    )
+    wb.save(filepath)
+
+    logger.info("Saved Excel rates to %s", filepath)
     return filepath
 
 
