@@ -6,11 +6,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Base currency to fetch rates against
-BASE_CURRENCY = os.getenv("BASE_CURRENCY", "USD")
+BASE_CURRENCY = os.getenv("BASE_CURRENCY", "EUR")
 
-# Currencies to track
+# Currencies to track (all 30 non-EUR currencies supported by Frankfurter)
 TARGET_CURRENCIES = os.getenv(
-    "TARGET_CURRENCIES", "EUR,GBP,JPY,CAD,AUD,CHF,CNY,INR,BRL,MXN"
+    "TARGET_CURRENCIES",
+    "AUD,BGN,BRL,CAD,CHF,CNY,CZK,DKK,GBP,HKD,"
+    "HUF,IDR,ILS,INR,ISK,JPY,KRW,MXN,MYR,NOK,"
+    "NZD,PHP,PLN,RON,SEK,SGD,THB,TRY,USD,ZAR",
 ).split(",")
 
 # Frankfurter API (free, no key required)
