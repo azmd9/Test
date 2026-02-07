@@ -27,8 +27,7 @@ jobs:
 
       - name: Fetch currency rates
         env:
-          BASE_CURRENCY: ${{ vars.BASE_CURRENCY || 'EUR' }}
-          TARGET_CURRENCIES: ${{ vars.TARGET_CURRENCIES || 'AUD,BGN,BRL,CAD,CHF,CNY,CZK,DKK,GBP,HKD,HUF,IDR,ILS,INR,ISK,JPY,KRW,MXN,MYR,NOK,NZD,PHP,PLN,RON,SEK,SGD,THB,TRY,USD,ZAR' }}
+          CURRENCY_PAIRS: ${{ vars.CURRENCY_PAIRS || 'EUR:USD,EUR:CNY,EUR:BRL,EUR:BGN,EUR:GBP,EUR:SGD,EUR:TRY,EUR:SEK,EUR:ILS,EUR:CHF,EUR:KRW,EUR:PHP,EUR:JPY,EUR:HKD,EUR:IDR,EUR:THB,EUR:DKK,CNY:SGD,CNY:USD' }}
         run: python main.py
 
       - name: Commit and push rate data

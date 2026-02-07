@@ -22,15 +22,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _print_rates(rate_data: dict):
+    """Print fetched pair rates to stdout."""
+    print(f"Rates for {rate_data['date']}:")
+    for pair, rate in sorted(rate_data["pairs"].items()):
+        print(f"  {pair}: {rate}")
+
+
 def run_once():
     """Fetch latest rates, save them, and exit."""
     rates = fetch_latest_rates()
     save_rates_json(rates)
     save_rates_excel(rates)
     save_daily_snapshot(rates)
-    print(f"Rates for {rates['date']} (base: {rates['base']}):")
-    for currency, rate in sorted(rates["rates"].items()):
-        print(f"  {currency}: {rate}")
+    _print_rates(rates)
 
 
 def run_historical(target_date: str):
@@ -39,9 +44,7 @@ def run_historical(target_date: str):
     save_rates_json(rates)
     save_rates_excel(rates)
     save_daily_snapshot(rates)
-    print(f"Historical rates for {rates['date']} (base: {rates['base']}):")
-    for currency, rate in sorted(rates["rates"].items()):
-        print(f"  {currency}: {rate}")
+    _print_rates(rates)
 
 
 def main():

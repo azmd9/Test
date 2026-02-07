@@ -21,7 +21,7 @@ def save_rates_json(rate_data: dict) -> str:
     """Append rate data to a JSON Lines file (one JSON object per line).
 
     Args:
-        rate_data: Dict with date, base, and rates.
+        rate_data: Dict with date and pairs.
 
     Returns:
         Path to the written file.
@@ -39,15 +39,17 @@ def save_rates_json(rate_data: dict) -> str:
 def save_rates_excel(rate_data: dict) -> str:
     """Append rate data as a row in an Excel file.
 
+    Columns: date, then one column per currency pair (e.g. EUR/USD).
+
     Args:
-        rate_data: Dict with date, base, and rates.
+        rate_data: Dict with date and pairs.
 
     Returns:
         Path to the written file.
     """
     _ensure_data_dir()
     filepath = os.path.join(config.DATA_DIR, "rates.xlsx")
-    currencies = sorted(rate_data["rates"].keys())
+    pair_keys = sorted(rate_data["pairs"].keys())
 
     if os.path.exists(filepath):
         wb = load_workbook(filepath)
@@ -56,11 +58,11 @@ def save_rates_excel(rate_data: dict) -> str:
         wb = Workbook()
         ws = wb.active
         ws.title = "Currency Rates"
-        ws.append(["date", "base"] + currencies)
+        ws.append(["date"] + pair_keys)
 
     ws.append(
-        [rate_data["date"], rate_data["base"]]
-        + [rate_data["rates"].get(c, "") for c in currencies]
+        [rate_data["date"]]
+        + [rate_data["pairs"].get(k, "") for k in pair_keys]
     )
     wb.save(filepath)
 
@@ -72,7 +74,7 @@ def save_daily_snapshot(rate_data: dict) -> str:
     """Save a standalone JSON file for a single day's rates.
 
     Args:
-        rate_data: Dict with date, base, and rates.
+        rate_data: Dict with date and pairs.
 
     Returns:
         Path to the written file.

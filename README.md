@@ -8,7 +8,7 @@ Fetches daily currency exchange rates from the [Frankfurter API](https://frankfu
 - **Local scheduling** for self-hosted continuous retrieval
 - **Historical rate lookup** for any past date
 - **Dual storage** — Excel for spreadsheets, JSON Lines for programmatic access, plus per-day snapshots
-- **Configurable** base currency and target currencies via environment variables
+- **Configurable** currency pairs via environment variables, with cross-rate support
 
 ## Quick Start
 
@@ -31,16 +31,17 @@ Set via environment variables or a `.env` file (see `.env.example`):
 
 | Variable | Default | Description |
 |---|---|---|
-| `BASE_CURRENCY` | `USD` | Base currency for rate conversion |
-| `TARGET_CURRENCIES` | `EUR,GBP,JPY,...` | Comma-separated target currencies |
+| `CURRENCY_PAIRS` | `EUR:USD,EUR:CNY,...,CNY:SGD,CNY:USD` | Comma-separated `FROM:TO` pairs |
 | `DATA_DIR` | `data` | Directory for stored rate files |
 | `SCHEDULE_TIME` | `09:00` | Local time for daily retrieval (24h) |
+
+EUR-based pairs are fetched directly from the API. Cross-rate pairs (e.g. `CNY:SGD`) are computed via EUR as an intermediary.
 
 ## GitHub Actions
 
 The included workflow (`.github/workflows/daily-rates.yml`) runs daily at 09:00 UTC and commits updated rate data to the repository. You can also trigger it manually from the Actions tab.
 
-Override currencies via GitHub repository variables (`BASE_CURRENCY`, `TARGET_CURRENCIES`).
+Override pairs via the GitHub repository variable `CURRENCY_PAIRS`.
 
 ## Output Files
 
