@@ -1,0 +1,23 @@
+{
+  "date": "2026-03-13",
+  "pairs": {
+    "EUR/USD": 1.1476,
+    "EUR/CNY": 7.9145,
+    "EUR/BRL": 6.0172,
+    "EUR/GBP": 0.86503,
+    "EUR/SGD": 1.4685,
+    "EUR/TRY": 50.7122,
+    "EUR/SEK": 10.7545,
+    "EUR/ILS": 3.5883,
+    "EUR/CHF": 0.9034,
+    "EUR/KRW": 1711.87,
+    "EUR/PHP": 68.301,
+    "EUR/JPY": 182.85,
+    "EUR/HKD": 8.9827,
+    "EUR/IDR": 19395.07,
+    "EUR/THB": 36.953,
+    "EUR/DKK": 7.4726,
+    "CNY/SGD": 0.185546,
+    "CNY/USD": 0.145
+  }
+}
