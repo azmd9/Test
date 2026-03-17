@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
@@ -21,7 +22,7 @@ def save_rates_json(rate_data: dict) -> str:
     """Append rate data to a JSON Lines file (one JSON object per line).
 
     Args:
-        rate_data: Dict with date and pairs.
+        rate_data: Dict with date, pairs, and sources.
 
     Returns:
         Path to the written file.
@@ -37,36 +38,56 @@ def save_rates_json(rate_data: dict) -> str:
 
 
 def save_rates_excel(rate_data: dict) -> str:
-    """Append rate data as a row in an Excel file.
+    """Save rate data as a row in a timestamped Excel file.
 
-    Columns: date, then one column per currency pair (e.g. EUR/USD).
+    The filename includes the run date and time (UTC) for traceability.
+    Columns: date, then one column per currency pair, then source per pair.
 
     Args:
-        rate_data: Dict with date and pairs.
+        rate_data: Dict with date, pairs, and sources.
 
     Returns:
         Path to the written file.
     """
     _ensure_data_dir()
-    filepath = os.path.join(config.DATA_DIR, "rates.xlsx")
+    now_utc = datetime.now(timezone.utc)
+    timestamp = now_utc.strftime("%Y-%m-%d_%H%M%S")
+    filepath = os.path.join(config.DATA_DIR, f"rates_{timestamp}.xlsx")
     pair_keys = sorted(rate_data["pairs"].keys())
+    sources = rate_data.get("sources", {})
 
-    if os.path.exists(filepath):
-        wb = load_workbook(filepath)
-        ws = wb.active
-    else:
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Currency Rates"
-        ws.append(["date"] + pair_keys)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Currency Rates"
 
-    ws.append(
+    # Header row: date | rates... | source columns...
+    headers = ["date"] + pair_keys + [f"{k} source" for k in pair_keys]
+    ws.append(headers)
+
+    # Data row
+    row = (
         [rate_data["date"]]
         + [rate_data["pairs"].get(k, "") for k in pair_keys]
+        + [sources.get(k, "") for k in pair_keys]
     )
+    ws.append(row)
     wb.save(filepath)
 
-    logger.info("Saved Excel rates to %s", filepath)
+    # Also save/update the cumulative rates.xlsx (append row)
+    cumulative_path = os.path.join(config.DATA_DIR, "rates.xlsx")
+    if os.path.exists(cumulative_path):
+        wb_cum = load_workbook(cumulative_path)
+        ws_cum = wb_cum.active
+    else:
+        wb_cum = Workbook()
+        ws_cum = wb_cum.active
+        ws_cum.title = "Currency Rates"
+        ws_cum.append(headers)
+
+    ws_cum.append(row)
+    wb_cum.save(cumulative_path)
+
+    logger.info("Saved Excel rates to %s and %s", filepath, cumulative_path)
     return filepath
 
 
@@ -74,7 +95,7 @@ def save_daily_snapshot(rate_data: dict) -> str:
     """Save a standalone JSON file for a single day's rates.
 
     Args:
-        rate_data: Dict with date and pairs.
+        rate_data: Dict with date, pairs, and sources.
 
     Returns:
         Path to the written file.
