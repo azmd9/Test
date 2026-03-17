@@ -2,13 +2,11 @@
 ' CurrencyRates_VBA.bas
 ' Excel VBA Module - Fetch currency exchange rates directly in Excel
 '
-' SETUP:
+' SETUP (no references needed - uses late binding throughout):
 '   1. Open Excel > Alt+F11 (VBA Editor)
 '   2. Insert > Module
 '   3. Paste this code
-'   4. Tools > References > enable "Microsoft XML, v6.0"
-'      and "Microsoft Scripting Runtime"
-'   5. Close VBA Editor, then run FetchAllCurrencyRates from a button
+'   4. Close VBA Editor, then run FetchAllCurrencyRates from a button
 '      or Alt+F8
 '
 ' SOURCES:
@@ -33,6 +31,56 @@ Private Const SECONDARY_CURRENCIES As String = "AED,CLP,RUB,SAR,PEN,MAD,COP"
 
 Private Const SOURCE_PRIMARY As String = "Frankfurter/ECB (api.frankfurter.dev)"
 Private Const SOURCE_SECONDARY As String = "ExchangeRate-API (open.er-api.com)"
+
+
+'---------------------------------------------------------------------
+' Helper: Create an HTTP object that works across all Office versions
+' Tries multiple ProgIDs in order of preference
+'---------------------------------------------------------------------
+Private Function CreateHTTP() As Object
+    On Error Resume Next
+
+    ' Try WinHttp first (most reliable across 32/64-bit Office)
+    Set CreateHTTP = CreateObject("WinHttp.WinHttpRequest.5.1")
+    If Not CreateHTTP Is Nothing Then Exit Function
+
+    ' Try ServerXMLHTTP 6.0
+    Set CreateHTTP = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+    If Not CreateHTTP Is Nothing Then Exit Function
+
+    ' Try ServerXMLHTTP 3.0
+    Set CreateHTTP = CreateObject("MSXML2.ServerXMLHTTP.3.0")
+    If Not CreateHTTP Is Nothing Then Exit Function
+
+    ' Try XMLHTTP 6.0
+    Set CreateHTTP = CreateObject("MSXML2.XMLHTTP.6.0")
+    If Not CreateHTTP Is Nothing Then Exit Function
+
+    ' Try generic XMLHTTP
+    Set CreateHTTP = CreateObject("MSXML2.XMLHTTP")
+    If Not CreateHTTP Is Nothing Then Exit Function
+
+    On Error GoTo 0
+    Err.Raise vbObjectError + 100, , _
+        "Cannot create HTTP object. Please check that MSXML or WinHTTP is installed."
+End Function
+
+
+'---------------------------------------------------------------------
+' Helper: Create a Dictionary object
+'---------------------------------------------------------------------
+Private Function CreateDict() As Object
+    On Error Resume Next
+    Set CreateDict = CreateObject("Scripting.Dictionary")
+    On Error GoTo 0
+
+    If CreateDict Is Nothing Then
+        Err.Raise vbObjectError + 101, , _
+            "Cannot create Scripting.Dictionary." & vbCrLf & _
+            "Go to VBA Editor > Tools > References and enable " & _
+            "'Microsoft Scripting Runtime'."
+    End If
+End Function
 
 
 '---------------------------------------------------------------------
@@ -132,7 +180,12 @@ Public Sub FetchAllCurrencyRates()
 ErrHandler:
     Application.ScreenUpdating = True
     Application.StatusBar = False
-    MsgBox "Error fetching rates: " & Err.Description, vbCritical, "Error"
+    MsgBox "Error fetching rates: " & Err.Description & vbCrLf & vbCrLf & _
+           "Troubleshooting:" & vbCrLf & _
+           "- Check your internet connection" & vbCrLf & _
+           "- If behind a proxy/firewall, the API URLs may be blocked" & vbCrLf & _
+           "- Try: VBA Editor > Tools > References > enable 'Microsoft Scripting Runtime'", _
+           vbCritical, "Currency Rates Error"
 End Sub
 
 
@@ -142,13 +195,13 @@ End Sub
 '---------------------------------------------------------------------
 Private Function FetchFrankfurterRates() As Object
     Dim dict As Object
-    Set dict = CreateObject("Scripting.Dictionary")
+    Set dict = CreateDict()
 
     Dim url As String
     url = FRANKFURTER_URL & PRIMARY_CURRENCIES
 
     Dim http As Object
-    Set http = CreateObject("MSXML2.XMLHTTP60")
+    Set http = CreateHTTP()
     http.Open "GET", url, False
     http.send
 
@@ -168,7 +221,7 @@ Private Function FetchFrankfurterRates() As Object
     End If
 
     Dim ratesEnd As Long
-    ratesEnd = InStr(ratesStart, json, "}")
+    ratesEnd = InStr(ratesStart + 9, json, "}")
     Dim ratesStr As String
     ratesStr = Mid$(json, ratesStart + 9, ratesEnd - ratesStart - 9)
 
@@ -198,10 +251,10 @@ End Function
 '---------------------------------------------------------------------
 Private Function FetchExchangeRateAPI() As Object
     Dim dict As Object
-    Set dict = CreateObject("Scripting.Dictionary")
+    Set dict = CreateDict()
 
     Dim http As Object
-    Set http = CreateObject("MSXML2.XMLHTTP60")
+    Set http = CreateHTTP()
     http.Open "GET", EXCHANGERATE_URL, False
     http.send
 
