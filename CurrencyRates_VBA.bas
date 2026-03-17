@@ -520,18 +520,27 @@ Public Sub FetchMonthlyRates()
     Dim retrievedAt As String
     retrievedAt = Format$(Now, "yyyy-mm-dd hh:nn:ss") & " UTC"
     Dim row As Long: row = 2
+    Dim datesWithSecondary As Long: datesWithSecondary = 0
 
+    Dim secRates As Object
+    Dim secDateStr As String
     For Each dateKey In rangeRates.Keys
-        Dim secRates As Object
         If fawazByDate.Exists(CStr(dateKey)) Then
             Set secRates = fawazByDate(CStr(dateKey))
         Else
             Set secRates = Nothing
         End If
 
-        Dim secDateStr As String
+        ' Explicitly reset each iteration so a failed date doesn't bleed into the next
         If Not secRates Is Nothing Then
-            If secRates.Count > 0 Then secDateStr = CStr(dateKey) Else secDateStr = ""
+            If secRates.Count > 0 Then
+                secDateStr = CStr(dateKey)
+                datesWithSecondary = datesWithSecondary + 1
+            Else
+                secDateStr = ""
+            End If
+        Else
+            secDateStr = ""
         End If
 
         row = WriteRateBlock(ws, row, rangeRates(dateKey), secRates, _
@@ -544,11 +553,17 @@ Public Sub FetchMonthlyRates()
     Application.StatusBar = "Monthly rates loaded: " & totalDates & " business days"
     Application.ScreenUpdating = True
 
+    Dim secNote As String
+    If datesWithSecondary = 0 Then
+        secNote = "WARNING: secondary currencies (AED, CLP, RUB, SAR, PEN, MAD, COP)" & vbCrLf & _
+                  "could not be loaded - run TestSecondaryAPI for diagnostics."
+    Else
+        secNote = "Secondary currencies loaded for " & datesWithSecondary & "/" & totalDates & " dates."
+    End If
+
     MsgBox "Monthly rates retrieved!" & vbCrLf & _
            totalDates & " business days (" & startDate & " to " & endDate & ")" & vbCrLf & _
-           (row - 2) & " total rows written." & vbCrLf & vbCrLf & _
-           "All currencies (including AED, CLP, RUB, SAR, PEN, MAD, COP)" & vbCrLf & _
-           "have full historical data via fawazahmed0/exchange-api.", _
+           (row - 2) & " total rows written." & vbCrLf & vbCrLf & secNote, _
            vbInformation, "Monthly Rates"
     Exit Sub
 
@@ -572,4 +587,103 @@ End Sub
 '---------------------------------------------------------------------
 Public Sub ScheduleAutoRefresh(Optional intervalMinutes As Long = 60)
     Application.OnTime Now + TimeSerial(0, intervalMinutes, 0), "FetchAllCurrencyRates"
+End Sub
+
+
+'---------------------------------------------------------------------
+' TestSecondaryAPI - diagnostic macro to verify fawazahmed0 API access
+'
+' Run this via Alt+F8 if secondary currencies are missing.
+' It shows the raw HTTP response and parsed values so you can confirm
+' whether the API is reachable or blocked by a firewall/proxy.
+'---------------------------------------------------------------------
+Public Sub TestSecondaryAPI()
+    Dim testDate As String
+    testDate = Format$(Date - 1, "yyyy-mm-dd")   ' yesterday (published for sure)
+
+    Dim urlCDN As String
+    urlCDN = Replace$(FAWAZ_CDN_TMPL, "{DATE}", testDate)
+    Dim urlCF As String
+    urlCF = Replace$(FAWAZ_CF_TMPL, "{DATE}", testDate)
+
+    Dim msg As String
+    msg = "--- Secondary API Diagnostic ---" & vbCrLf
+    msg = msg & "Test date : " & testDate & vbCrLf & vbCrLf
+
+    ' --- Try CDN ---
+    Dim jsonCDN As String
+    jsonCDN = HttpGet(urlCDN, False)
+    If Len(jsonCDN) > 0 Then
+        msg = msg & "[CDN] OK - " & Len(jsonCDN) & " bytes received" & vbCrLf
+    Else
+        msg = msg & "[CDN] FAILED - URL: " & urlCDN & vbCrLf
+    End If
+
+    ' --- Try Cloudflare Pages ---
+    Dim jsonCF As String
+    jsonCF = HttpGet(urlCF, False)
+    If Len(jsonCF) > 0 Then
+        msg = msg & "[CF ] OK - " & Len(jsonCF) & " bytes received" & vbCrLf
+    Else
+        msg = msg & "[CF ] FAILED - URL: " & urlCF & vbCrLf
+    End If
+
+    msg = msg & vbCrLf
+
+    ' --- Parse whichever succeeded ---
+    Dim json As String
+    json = jsonCDN
+    If Len(json) = 0 Then json = jsonCF
+
+    If Len(json) = 0 Then
+        msg = msg & "BOTH MIRRORS FAILED." & vbCrLf
+        msg = msg & "The API URLs are not reachable from this machine." & vbCrLf
+        msg = msg & "Possible causes:" & vbCrLf
+        msg = msg & "  - Firewall or proxy is blocking external HTTPS requests" & vbCrLf
+        msg = msg & "  - No internet connection" & vbCrLf
+        msg = msg & "Try opening one of the URLs above in a browser to confirm."
+    Else
+        Dim rateDate As String
+        rateDate = ParseJsonString(json, "date")
+        msg = msg & "Rate date in response: " & rateDate & vbCrLf & vbCrLf
+
+        ' Parse secondary currencies
+        Dim eurPos As Long
+        eurPos = InStr(json, """eur"":{")
+        If eurPos = 0 Then
+            msg = msg & "ERROR: could not find ""eur"":{ in response." & vbCrLf
+            msg = msg & "First 300 chars of response:" & vbCrLf
+            msg = msg & Left$(json, 300)
+        Else
+            msg = msg & "Parsed rates:" & vbCrLf
+            Dim searchFrom As Long
+            searchFrom = eurPos + 7
+            Dim needed() As String
+            needed = Split(SECONDARY_CURRENCIES, ",")
+            Dim ccy As Variant
+            For Each ccy In needed
+                Dim lcKey As String
+                lcKey = """" & LCase(Trim$(CStr(ccy))) & """:"
+                Dim pos As Long
+                pos = InStr(searchFrom, json, lcKey)
+                If pos > 0 Then
+                    Dim valStart As Long
+                    valStart = pos + Len(lcKey)
+                    Dim valEnd As Long: valEnd = valStart
+                    Dim ch As String
+                    Do
+                        valEnd = valEnd + 1
+                        ch = Mid$(json, valEnd, 1)
+                    Loop While ch <> "," And ch <> "}" And valEnd < Len(json)
+                    Dim valStr As String
+                    valStr = Trim$(Mid$(json, valStart, valEnd - valStart))
+                    msg = msg & "  EUR/" & UCase(Trim$(CStr(ccy))) & " = " & valStr & vbCrLf
+                Else
+                    msg = msg & "  EUR/" & UCase(Trim$(CStr(ccy))) & " = NOT FOUND in JSON" & vbCrLf
+                End If
+            Next ccy
+        End If
+    End If
+
+    MsgBox msg, vbInformation, "Secondary API Diagnostic"
 End Sub
