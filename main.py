@@ -12,7 +12,7 @@ import logging
 import sys
 
 from fetcher import fetch_latest_rates, fetch_historical_rates
-from storage import save_rates_excel, save_rates_json, save_daily_snapshot
+from storage import save_rates_excel
 from scheduler import start_scheduler
 
 logging.basicConfig(
@@ -32,18 +32,14 @@ def _print_rates(rate_data: dict):
 def run_once():
     """Fetch latest rates, save them, and exit."""
     rates = fetch_latest_rates()
-    save_rates_json(rates)
     save_rates_excel(rates)
-    save_daily_snapshot(rates)
     _print_rates(rates)
 
 
 def run_historical(target_date: str):
     """Fetch historical rates for a specific date."""
     rates = fetch_historical_rates(target_date)
-    save_rates_json(rates)
     save_rates_excel(rates)
-    save_daily_snapshot(rates)
     _print_rates(rates)
 
 

@@ -7,7 +7,7 @@ import schedule
 
 import config
 from fetcher import fetch_latest_rates
-from storage import save_rates_excel, save_rates_json, save_daily_snapshot
+from storage import save_rates_excel
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +17,7 @@ def daily_job():
     logger.info("Running scheduled currency rate retrieval...")
     try:
         rates = fetch_latest_rates()
-        save_rates_json(rates)
         save_rates_excel(rates)
-        save_daily_snapshot(rates)
         logger.info("Daily retrieval complete for %s", rates["date"])
     except Exception:
         logger.exception("Failed to retrieve currency rates")
