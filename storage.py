@@ -38,10 +38,13 @@ def save_rates_json(rate_data: dict) -> str:
 
 
 def save_rates_excel(rate_data: dict) -> str:
-    """Save rate data as a row in a timestamped Excel file.
+    """Append rate data to the cumulative rates.xlsx file.
 
-    The filename includes the run date and time (UTC) for traceability.
-    Columns: date, then one column per currency pair, then source per pair.
+    Uses a tall format with one row per currency pair per day:
+        Rate Date | Currency Pair | Rate (vs EUR) | Source | Retrieved (UTC)
+
+    If the date already exists in the file, its rows are skipped to avoid
+    duplicates (allows safe re-runs).
 
     Args:
         rate_data: Dict with date, pairs, and sources.
@@ -50,45 +53,41 @@ def save_rates_excel(rate_data: dict) -> str:
         Path to the written file.
     """
     _ensure_data_dir()
-    now_utc = datetime.now(timezone.utc)
-    timestamp = now_utc.strftime("%Y-%m-%d_%H%M%S")
-    filepath = os.path.join(config.DATA_DIR, f"rates_{timestamp}.xlsx")
-    pair_keys = sorted(rate_data["pairs"].keys())
-    sources = rate_data.get("sources", {})
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Currency Rates"
-
-    # Header row: date | rates... | source columns...
-    headers = ["date"] + pair_keys + [f"{k} source" for k in pair_keys]
-    ws.append(headers)
-
-    # Data row
-    row = (
-        [rate_data["date"]]
-        + [rate_data["pairs"].get(k, "") for k in pair_keys]
-        + [sources.get(k, "") for k in pair_keys]
-    )
-    ws.append(row)
-    wb.save(filepath)
-
-    # Also save/update the cumulative rates.xlsx (append row)
     cumulative_path = os.path.join(config.DATA_DIR, "rates.xlsx")
+    retrieved_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    headers = ["Rate Date", "Currency Pair", "Rate (vs EUR)", "Source", "Retrieved (UTC)"]
+
     if os.path.exists(cumulative_path):
-        wb_cum = load_workbook(cumulative_path)
-        ws_cum = wb_cum.active
+        wb = load_workbook(cumulative_path)
+        ws = wb.active
+        # Check if this date already exists (skip duplicates)
+        existing_dates = set()
+        for row in ws.iter_rows(min_row=2, max_col=1, values_only=True):
+            if row[0] is not None:
+                existing_dates.add(str(row[0]))
+        if rate_data["date"] in existing_dates:
+            logger.info("Date %s already in %s, skipping", rate_data["date"], cumulative_path)
+            return cumulative_path
     else:
-        wb_cum = Workbook()
-        ws_cum = wb_cum.active
-        ws_cum.title = "Currency Rates"
-        ws_cum.append(headers)
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Currency Rates"
+        ws.append(headers)
 
-    ws_cum.append(row)
-    wb_cum.save(cumulative_path)
+    sources = rate_data.get("sources", {})
+    for pair_key in sorted(rate_data["pairs"].keys()):
+        ws.append([
+            rate_data["date"],
+            pair_key,
+            rate_data["pairs"][pair_key],
+            sources.get(pair_key, ""),
+            retrieved_at,
+        ])
 
-    logger.info("Saved Excel rates to %s and %s", filepath, cumulative_path)
-    return filepath
+    wb.save(cumulative_path)
+    logger.info("Appended %d rows to %s for %s",
+                len(rate_data["pairs"]), cumulative_path, rate_data["date"])
+    return cumulative_path
 
 
 def save_daily_snapshot(rate_data: dict) -> str:
