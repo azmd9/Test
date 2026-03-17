@@ -5,6 +5,7 @@ Secondary source: ExchangeRate-API           - https://open.er-api.com
 """
 
 import logging
+import time
 from datetime import date
 
 import requests
@@ -14,8 +15,8 @@ import config
 logger = logging.getLogger(__name__)
 
 # Source labels for audit trail
-SOURCE_FRANKFURTER = "Frankfurter/ECB (api.frankfurter.dev)"
-SOURCE_EXCHANGERATE = "ExchangeRate-API (open.er-api.com)"
+SOURCE_FRANKFURTER = "Frankfurter/ECB"
+SOURCE_EXCHANGERATE = "ExchangeRate-API"
 
 
 def _parse_pairs() -> tuple[set[str], list[tuple[str, str]]]:
@@ -67,12 +68,13 @@ def _fetch_secondary(symbols: set[str]) -> dict:
     """Fetch EUR-based rates from the secondary ExchangeRate-API.
 
     Only fetches currencies listed in config.SECONDARY_ONLY_CURRENCIES.
+    Retries up to 3 times with exponential backoff on failure.
 
     Args:
         symbols: Set of currency codes needed.
 
     Returns:
-        Dict of currency -> rate (relative to EUR).
+        Dict of currency -> rate (relative to EUR). Empty dict on failure.
     """
     needed = symbols & config.SECONDARY_ONLY_CURRENCIES
     if not needed:
@@ -81,13 +83,27 @@ def _fetch_secondary(symbols: set[str]) -> dict:
     url = f"{config.SECONDARY_API_BASE_URL}/EUR"
     logger.info("Fetching rates from ExchangeRate-API: %s (for %s)", url, sorted(needed))
 
-    resp = requests.get(url, timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
-    all_rates = data.get("rates", {})
+    for attempt in range(3):
+        try:
+            resp = requests.get(url, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            all_rates = data.get("rates", {})
+            result = {ccy: all_rates[ccy] for ccy in needed if ccy in all_rates}
+            if result:
+                logger.info("ExchangeRate-API returned %d rates", len(result))
+                return result
+            logger.warning("ExchangeRate-API returned no matching rates")
+            return {}
+        except Exception as exc:
+            wait = 2 ** (attempt + 1)
+            logger.warning("ExchangeRate-API attempt %d failed: %s. Retrying in %ds...",
+                           attempt + 1, exc, wait)
+            if attempt < 2:
+                time.sleep(wait)
 
-    # Return only the currencies we need from this source
-    return {ccy: all_rates[ccy] for ccy in needed if ccy in all_rates}
+    logger.error("ExchangeRate-API failed after 3 attempts. Secondary pairs will be missing.")
+    return {}
 
 
 def _compute_pair_rates(eur_rates: dict) -> dict:
