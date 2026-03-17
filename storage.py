@@ -3,8 +3,9 @@
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from openpyxl import Workbook, load_workbook
 
@@ -37,6 +38,20 @@ def save_rates_json(rate_data: dict) -> str:
     return filepath
 
 
+def _derive_source(pair_key: str) -> str:
+    """Derive the data source label from a currency pair key like 'EUR/USD'."""
+    frm, to = pair_key.split("/")
+    sources = set()
+    for ccy in (frm, to):
+        if ccy == "EUR":
+            continue
+        if ccy in config.SECONDARY_ONLY_CURRENCIES:
+            sources.add("ExchangeRate-API")
+        else:
+            sources.add("Frankfurter/ECB")
+    return " + ".join(sorted(sources)) if sources else "Frankfurter/ECB"
+
+
 def save_rates_excel(rate_data: dict) -> str:
     """Append rate data to the cumulative rates.xlsx file.
 
@@ -54,8 +69,9 @@ def save_rates_excel(rate_data: dict) -> str:
     """
     _ensure_data_dir()
     cumulative_path = os.path.join(config.DATA_DIR, "rates.xlsx")
-    retrieved_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    headers = ["Rate Date", "Currency Pair", "Rate (vs EUR)", "Source", "Retrieved (UTC)"]
+    cet = ZoneInfo("Europe/Berlin")
+    retrieved_at = datetime.now(cet).replace(hour=7, minute=30, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M CET")
+    headers = ["Rate Date", "Currency Pair", "Rate (vs EUR)", "Source", "Retrieved (CET)"]
 
     if os.path.exists(cumulative_path):
         wb = load_workbook(cumulative_path)
@@ -76,11 +92,15 @@ def save_rates_excel(rate_data: dict) -> str:
 
     sources = rate_data.get("sources", {})
     for pair_key in sorted(rate_data["pairs"].keys()):
+        # Derive source from currency if not explicitly provided
+        source = sources.get(pair_key, "")
+        if not source:
+            source = _derive_source(pair_key)
         ws.append([
             rate_data["date"],
             pair_key,
             rate_data["pairs"][pair_key],
-            sources.get(pair_key, ""),
+            source,
             retrieved_at,
         ])
 

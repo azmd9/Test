@@ -2,8 +2,8 @@ name: Daily Currency Rate Retrieval
 
 on:
   schedule:
-    # Run daily at 09:00 UTC
-    - cron: "0 9 * * *"
+    # Run daily at 06:30 UTC (= 07:30 CET)
+    - cron: "30 6 * * *"
   workflow_dispatch: # Allow manual triggers
 
 permissions:
