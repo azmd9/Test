@@ -109,15 +109,22 @@ End Function
 ' JSON PARSING HELPERS
 '=====================================================================
 
-' Extract value of  "key":"value"
+' Extract value of  "key":"value"  or  "key": "value"  (handles optional whitespace)
 Private Function ParseJsonString(json As String, key As String) As String
     Dim searchStr As String
-    searchStr = """" & key & """:"""
+    searchStr = """" & key & """:"
     Dim pos As Long
     pos = InStr(json, searchStr)
     If pos = 0 Then Exit Function
     Dim valStart As Long
     valStart = pos + Len(searchStr)
+    ' Skip optional whitespace between : and opening quote
+    Do While valStart <= Len(json) And _
+             (Mid$(json, valStart, 1) = " " Or Mid$(json, valStart, 1) = Chr(9))
+        valStart = valStart + 1
+    Loop
+    If Mid$(json, valStart, 1) <> """" Then Exit Function   ' not a string value
+    valStart = valStart + 1                                  ' skip opening quote
     Dim closePos As Long
     closePos = InStr(valStart, json, """")
     If closePos = 0 Then Exit Function
@@ -265,13 +272,18 @@ Private Function FetchFromFawazAPI(dateStr As String, ByRef rateDate As String) 
     rateDate = ParseJsonString(json, "date")
     If rateDate = "" Then rateDate = dateStr
 
-    ' Locate the "eur":{  object
+    ' Locate the "eur": { object (handle optional whitespace before {)
     Dim eurPos As Long
-    eurPos = InStr(json, """eur"":{")
+    eurPos = InStr(json, """eur"":")
     If eurPos = 0 Then Set FetchFromFawazAPI = dict: Exit Function
 
     Dim searchFrom As Long
-    searchFrom = eurPos + 7   ' position just after  "eur":{
+    searchFrom = eurPos + 6   ' position right after  "eur":
+    Do While searchFrom <= Len(json) And Mid$(json, searchFrom, 1) <> "{"
+        searchFrom = searchFrom + 1
+    Loop
+    If searchFrom > Len(json) Then Set FetchFromFawazAPI = dict: Exit Function
+    searchFrom = searchFrom + 1   ' position just after  {
 
     ' Extract each secondary currency (keys are lowercase in this API)
     Dim needed() As String
@@ -649,15 +661,21 @@ Public Sub TestSecondaryAPI()
 
         ' Parse secondary currencies
         Dim eurPos As Long
-        eurPos = InStr(json, """eur"":{")
-        If eurPos = 0 Then
-            msg = msg & "ERROR: could not find ""eur"":{ in response." & vbCrLf
+        eurPos = InStr(json, """eur"":")
+        Dim searchFrom As Long
+        If eurPos > 0 Then
+            searchFrom = eurPos + 6
+            Do While searchFrom <= Len(json) And Mid$(json, searchFrom, 1) <> "{"
+                searchFrom = searchFrom + 1
+            Loop
+            searchFrom = searchFrom + 1   ' just after {
+        End If
+        If eurPos = 0 Or searchFrom > Len(json) Then
+            msg = msg & "ERROR: could not find ""eur"": { in response." & vbCrLf
             msg = msg & "First 300 chars of response:" & vbCrLf
             msg = msg & Left$(json, 300)
         Else
             msg = msg & "Parsed rates:" & vbCrLf
-            Dim searchFrom As Long
-            searchFrom = eurPos + 7
             Dim needed() As String
             needed = Split(SECONDARY_CURRENCIES, ",")
             Dim ccy As Variant
