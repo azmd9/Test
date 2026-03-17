@@ -489,6 +489,22 @@ Public Sub FetchMonthlyRates()
     Dim rangeRates As Object    ' dateStr -> Dict(ccy -> rate)
     Set rangeRates = FetchRangeFromFrankfurter(startDate, endDate)
 
+    ' Frankfurter may include the last business day before the range; remove it
+    Dim removeKeys() As String
+    Dim removeCount As Long: removeCount = 0
+    Dim dk As Variant
+    For Each dk In rangeRates.Keys
+        If CStr(dk) < startDate Then
+            removeCount = removeCount + 1
+            ReDim Preserve removeKeys(1 To removeCount)
+            removeKeys(removeCount) = CStr(dk)
+        End If
+    Next dk
+    Dim ri As Long
+    For ri = 1 To removeCount
+        rangeRates.Remove removeKeys(ri)
+    Next ri
+
     Dim totalDates As Long
     totalDates = rangeRates.Count
     If totalDates = 0 Then
