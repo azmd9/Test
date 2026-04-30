@@ -19,7 +19,7 @@
 '   Secondary: fawazahmed0/exchange-api (jsDelivr CDN / Cloudflare Pages)
 '              https://github.com/fawazahmed0/exchange-api
 '              Free, no API key, 200+ currencies, full historical by date.
-'              Supports: AED CLP RUB SAR PEN MAD COP (and many more)
+'              Supports: AED CLP RUB SAR PEN MAD COP ARS (and many more)
 '=====================================================================
 Option Explicit
 
@@ -35,7 +35,7 @@ Private Const FAWAZ_CF_TMPL      As String = "https://{DATE}.currency-api.pages.
 Private Const PRIMARY_CURRENCIES   As String = "USD,CNY,BRL,BGN,GBP,SGD,TRY,SEK,ILS,CHF,KRW,PHP,JPY,HKD,IDR,THB,DKK"
 
 ' Currencies fetched from fawazahmed0 (full history available)
-Private Const SECONDARY_CURRENCIES As String = "AED,CLP,RUB,SAR,PEN,MAD,COP"
+Private Const SECONDARY_CURRENCIES As String = "AED,CLP,RUB,SAR,PEN,MAD,COP,ARS"
 
 Private Const SOURCE_PRIMARY     As String = "Frankfurter/ECB (api.frankfurter.dev)"
 Private Const SOURCE_SECONDARY   As String = "fawazahmed0/exchange-api (cdn.jsdelivr.net)"
@@ -583,7 +583,7 @@ Public Sub FetchMonthlyRates()
 
     Dim secNote As String
     If datesWithSecondary = 0 Then
-        secNote = "WARNING: secondary currencies (AED, CLP, RUB, SAR, PEN, MAD, COP)" & vbCrLf & _
+        secNote = "WARNING: secondary currencies (AED, CLP, RUB, SAR, PEN, MAD, COP, ARS)" & vbCrLf & _
                   "could not be loaded - run TestSecondaryAPI for diagnostics."
     Else
         secNote = "Secondary currencies loaded for " & datesWithSecondary & "/" & totalDates & " dates."

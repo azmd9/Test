@@ -14,7 +14,7 @@ CURRENCY_PAIRS = os.getenv(
     "EUR:USD,EUR:CNY,EUR:BRL,EUR:BGN,EUR:GBP,EUR:SGD,"
     "EUR:TRY,EUR:SEK,EUR:ILS,EUR:CHF,EUR:KRW,EUR:PHP,"
     "EUR:JPY,EUR:HKD,EUR:IDR,EUR:THB,EUR:DKK,"
-    "EUR:AED,EUR:CLP,EUR:RUB,EUR:SAR,EUR:PEN,EUR:MAD,EUR:COP,"
+    "EUR:AED,EUR:CLP,EUR:RUB,EUR:SAR,EUR:PEN,EUR:MAD,EUR:COP,EUR:ARS,"
     "CNY:SGD,CNY:USD",
 ).split(",")
 
@@ -29,11 +29,11 @@ API_BASE_URL = "https://api.frankfurter.dev/v1"
 # Used for currencies not available in Frankfurter/ECB:
 #   AED (UAE Dirham), CLP (Chilean Peso), RUB (Russian Ruble),
 #   SAR (Saudi Riyal), PEN (Peruvian Sol), MAD (Moroccan Dirham),
-#   COP (Colombian Peso)
+#   COP (Colombian Peso), ARS (Argentine Peso)
 SECONDARY_API_BASE_URL = "https://open.er-api.com/v6/latest"
 
 # Currencies only available from the secondary API source
-SECONDARY_ONLY_CURRENCIES = {"AED", "CLP", "RUB", "SAR", "PEN", "MAD", "COP"}
+SECONDARY_ONLY_CURRENCIES = {"AED", "CLP", "RUB", "SAR", "PEN", "MAD", "COP", "ARS"}
 
 # Data storage directory
 DATA_DIR = os.getenv("DATA_DIR", "data")
