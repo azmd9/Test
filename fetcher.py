@@ -42,12 +42,17 @@ def _parse_pairs() -> tuple[set[str], list[tuple[str, str]]]:
 def _fetch_frankfurter(endpoint: str, symbols: set[str]) -> tuple[str, dict]:
     """Fetch EUR-based rates from the Frankfurter API (ECB data).
 
+    Retries up to 3 times with exponential backoff on failure. Returns
+    an empty rates dict if all attempts fail so the caller can fall back
+    to other sources rather than aborting the whole job.
+
     Args:
         endpoint: API endpoint path (e.g. '/latest' or '/2025-01-15').
         symbols: Set of currency codes to fetch.
 
     Returns:
         (rate_date, rates_dict) where rates_dict maps currency -> rate.
+        On total failure, returns (today, {}).
     """
     # Filter out currencies not supported by Frankfurter
     supported = symbols - config.SECONDARY_ONLY_CURRENCIES
@@ -58,10 +63,22 @@ def _fetch_frankfurter(endpoint: str, symbols: set[str]) -> tuple[str, dict]:
     url = f"{config.API_BASE_URL}{endpoint}"
     logger.info("Fetching rates from Frankfurter API: %s", url)
 
-    resp = requests.get(url, params=params, timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
-    return data.get("date", str(date.today())), data.get("rates", {})
+    for attempt in range(3):
+        try:
+            resp = requests.get(url, params=params, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("date", str(date.today())), data.get("rates", {})
+        except Exception as exc:
+            wait = 2 ** (attempt + 1)
+            logger.warning("Frankfurter attempt %d failed: %s. Retrying in %ds...",
+                           attempt + 1, exc, wait)
+            if attempt < 2:
+                time.sleep(wait)
+
+    logger.error("Frankfurter failed after 3 attempts. Primary rates will be missing; "
+                 "continuing with other sources.")
+    return str(date.today()), {}
 
 
 def _fetch_secondary(symbols: set[str]) -> dict:
