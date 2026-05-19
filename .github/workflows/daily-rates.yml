@@ -2,8 +2,11 @@ name: Daily Currency Rate Retrieval
 
 on:
   schedule:
-    # Run daily at 06:30 UTC (= 07:30 CET)
-    - cron: "30 6 * * *"
+    # 17:23 UTC, Mon-Fri. ECB publishes EUR reference rates ~14:00 UTC on
+    # TARGET working days; this leaves a ~3.5h buffer past publication and
+    # skips weekends when ECB doesn't publish. Off-the-hour minute reduces
+    # GitHub Actions scheduler queueing delays.
+    - cron: "23 17 * * 1-5"
   workflow_dispatch: # Allow manual triggers
 
 permissions:
@@ -15,10 +18,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
